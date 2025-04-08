@@ -198,10 +198,79 @@ document.addEventListener('DOMContentLoaded', () => {
         speed: 0.1
     };
     
+    // Detect if device is likely mobile
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+    
+    // If mobile, adjust particle count for better performance
+    if (isMobile) {
+        // Reduce particle count by 60% on mobile for better performance
+        const newParticlesCount = Math.floor(particlesCount * 0.4);
+        const positions = particlesGeometry.attributes.position.array;
+        const scales = particlesGeometry.attributes.aScale.array;
+        
+        // Only use a subset of the particles
+        const newPositions = new Float32Array(newParticlesCount * 3);
+        const newScales = new Float32Array(newParticlesCount);
+        
+        for (let i = 0; i < newParticlesCount * 3; i++) {
+            newPositions[i] = positions[i];
+            if (i % 3 === 0) {
+                newScales[i / 3] = scales[i / 3];
+            }
+        }
+        
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(newPositions, 3));
+        particlesGeometry.setAttribute('aScale', new THREE.BufferAttribute(newScales, 1));
+        
+        // Also reduce star count
+        const newStarCount = Math.floor(starCount * 0.6);
+        const starPositions = starGeometry.attributes.position.array;
+        const starScales = starGeometry.attributes.aScale.array;
+        
+        const newStarPositions = new Float32Array(newStarCount * 3);
+        const newStarScales = new Float32Array(newStarCount);
+        
+        for (let i = 0; i < newStarCount * 3; i++) {
+            newStarPositions[i] = starPositions[i];
+            if (i % 3 === 0) {
+                newStarScales[i / 3] = starScales[i / 3];
+            }
+        }
+        
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(newStarPositions, 3));
+        starGeometry.setAttribute('aScale', new THREE.BufferAttribute(newStarScales, 1));
+        
+        // Adjust camera distance for mobile
+        camera.position.z = 6;
+    }
+    
+    // Mouse movement event
     document.addEventListener('mousemove', (event) => {
         // Normalize coordinates to be between -1 and 1
         mouse.targetX = (event.clientX / window.innerWidth - 0.5) * 2;
         mouse.targetY = -(event.clientY / window.innerHeight - 0.5) * 2;
+    });
+    
+    // Touch events for mobile
+    document.addEventListener('touchmove', (event) => {
+        if (event.touches.length > 0) {
+            // Prevent scrolling while interacting with the 3D scene
+            event.preventDefault();
+            
+            mouse.targetX = (event.touches[0].clientX / window.innerWidth - 0.5) * 2;
+            mouse.targetY = -(event.touches[0].clientY / window.innerHeight - 0.5) * 2;
+        }
+    }, { passive: false });
+    
+    // Reset on touch end
+    document.addEventListener('touchend', () => {
+        // Gradually return to center
+        gsap.to(mouse, {
+            targetX: 0,
+            targetY: 0,
+            duration: 1.5,
+            ease: "power2.out"
+        });
     });
     
     // Handle window resize
